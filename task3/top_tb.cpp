@@ -1,6 +1,6 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
-#include "Vclktick.h"
+#include "Vtop.h"
 
 #include "vbuddy.cpp"     // include vbuddy code
 #define MAX_SIM_CYC 100000
@@ -12,12 +12,12 @@ int main(int argc, char **argv, char **env) {
 
   Verilated::commandArgs(argc, argv);
   // init top verilog instance
-  Vclktick * top = new Vclktick;
+  Vtop * top = new Vtop;
   // init trace dump
   Verilated::traceEverOn(true);
   VerilatedVcdC* tfp = new VerilatedVcdC;
   top->trace (tfp, 99);
-  tfp->open ("clktick.vcd");
+  tfp->open ("top.vcd");
  
   // init Vbuddy
   if (vbdOpen()!=1) return(-1);
@@ -32,6 +32,7 @@ int main(int argc, char **argv, char **env) {
   
   // run simulation for MAX_SIM_CYC clock cycles
   for (simcyc=0; simcyc<MAX_SIM_CYC; simcyc++) {
+
     // dump variables into VCD file and toggle clock
     for (tick=0; tick<2; tick++) {
       tfp->dump (2*simcyc+tick);
@@ -39,15 +40,16 @@ int main(int argc, char **argv, char **env) {
       top->eval ();
     }
 
-    // Display toggle neopixel
-    if (top->tick) {
-      vbdBar(lights);
-      lights = lights ^ 0xFF;
-    }
+    // show data on Vbuddy
+    // vbdHex(1, top->data_out & 0xF); // four bit output of random sequence
+    // vbdHex(2, top->data_out >> 4 & 0xF); // next 3 bits
+    vbdBar(top->data_out & 0xFF); // show 7 bit result on the neopixel strip
+    
     // set up input signals of testbench
     top->rst = (simcyc < 2);    // assert reset for 1st cycle
     top->en = (simcyc > 2);
     top->N = vbdValue();
+    // top->N = vbdValue();
     vbdCycle(simcyc);
 
     if (Verilated::gotFinish())  exit(0);
